@@ -42,7 +42,7 @@ import { ChatEditingSessionSubmitAction, ChatSubmitAction } from '../actions/cha
 import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { ChatInputPart } from '../chatInputPart.js';
 import { ChatDynamicVariableModel, SelectAndInsertFileAction, SelectAndInsertSymAction } from './chatDynamicVariables.js';
-import { PromptEditorContribution } from './promptSyntaxProvider.js';
+import { PromptEditorContribution } from './promptEditor.js';
 
 class SlashCommandCompletions extends Disposable {
 	constructor(

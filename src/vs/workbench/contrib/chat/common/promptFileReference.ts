@@ -149,10 +149,17 @@ export class PromptFileReference extends Disposable {
 	}
 
 	/**
+	 * Check if the provided URI points to a prompt snippet file.
+	 */
+	public static isPromptSnippetFile(uri: URI): boolean {
+		return uri.path.endsWith(PROMP_SNIPPET_FILE_EXTENSION);
+	}
+
+	/**
 	 * Check if the current reference points to a prompt snippet file.
 	 */
 	public get isPromptSnippetFile(): boolean {
-		return this.uri.path.endsWith(PROMP_SNIPPET_FILE_EXTENSION);
+		return PromptFileReference.isPromptSnippetFile(this.uri);
 	}
 
 	/**
