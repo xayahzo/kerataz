@@ -42,6 +42,7 @@ import { ChatEditingSessionSubmitAction, ChatSubmitAction } from '../actions/cha
 import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { ChatInputPart } from '../chatInputPart.js';
 import { ChatDynamicVariableModel, SelectAndInsertFileAction, SelectAndInsertSymAction } from './chatDynamicVariables.js';
+import { PromptEditorContribution } from './promptSyntaxProvider.js';
 
 class SlashCommandCompletions extends Disposable {
 	constructor(
@@ -724,6 +725,9 @@ class BuiltinDynamicCompletions extends Disposable {
 }
 
 Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench).registerWorkbenchContribution(BuiltinDynamicCompletions, LifecyclePhase.Eventually);
+
+// TODO: @legomushroom
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench).registerWorkbenchContribution(PromptEditorContribution, LifecyclePhase.Eventually);
 
 export interface IChatCompletionRangeResult {
 	insert: Range;
