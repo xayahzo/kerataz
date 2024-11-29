@@ -14,6 +14,8 @@ import { ReadableStream } from '../../../../base/common/stream.js';
 import { CarriageReturn } from '../linesCodec/tokens/carriageReturn.js';
 import { LinesDecoder, TLineToken } from '../linesCodec/linesDecoder.js';
 import { BaseDecoder } from '../../../../base/common/codecs/baseDecoder.js';
+import { Line } from '../linesCodec/tokens/line.js';
+import { assertNever } from '../../../../base/common/assert.js';
 
 /**
  * A token type that this decoder can handle.
@@ -32,9 +34,15 @@ const STOP_CHARACTERS = [Space.symbol, Tab.symbol, VerticalTab.symbol, FormFeed.
  * of simple token, - `Word`, `Space`, `Tab`, `NewLine`, etc.
  */
 export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
-	constructor(
-		stream: ReadableStream<VSBuffer>,
-	) {
+	constructor(stream: ReadableStream<VSBuffer>);
+	constructor(stream: LinesDecoder);
+	constructor(stream: ReadableStream<any>) {
+		if (stream instanceof LinesDecoder) {
+			super(stream);
+
+			return;
+		}
+
 		super(new LinesDecoder(stream));
 	}
 
@@ -46,6 +54,23 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 			return;
 		}
 
+		if (token instanceof Line) {
+			return SimpleDecoder.parseLine(token, this._onData.fire.bind(this._onData));
+		}
+
+		assertNever(
+			token,
+			`Unsupported token '${token}'.`,
+		);
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	private static parseLine(
+		token: Line,
+		onToken: (event: TSimpleToken) => void,
+	): void {
 		// loop through the text separating it into `Word` and `Space` tokens
 		let i = 0;
 		while (i < token.text.length) {
@@ -54,7 +79,7 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 
 			// if a space character, emit a `Space` token and continue
 			if (token.text[i] === Space.symbol) {
-				this._onData.fire(Space.newOnLine(token, columnNumber));
+				onToken(Space.newOnLine(token, columnNumber));
 
 				i++;
 				continue;
@@ -62,7 +87,7 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 
 			// if a tab character, emit a `Tab` token and continue
 			if (token.text[i] === Tab.symbol) {
-				this._onData.fire(Tab.newOnLine(token, columnNumber));
+				onToken(Tab.newOnLine(token, columnNumber));
 
 				i++;
 				continue;
@@ -70,7 +95,7 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 
 			// if a vertical tab character, emit a `VerticalTab` token and continue
 			if (token.text[i] === VerticalTab.symbol) {
-				this._onData.fire(VerticalTab.newOnLine(token, columnNumber));
+				onToken(VerticalTab.newOnLine(token, columnNumber));
 
 				i++;
 				continue;
@@ -78,7 +103,7 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 
 			// if a form feed character, emit a `FormFeed` token and continue
 			if (token.text[i] === FormFeed.symbol) {
-				this._onData.fire(FormFeed.newOnLine(token, columnNumber));
+				onToken(FormFeed.newOnLine(token, columnNumber));
 
 				i++;
 				continue;
@@ -92,7 +117,7 @@ export class SimpleDecoder extends BaseDecoder<TSimpleToken, TLineToken> {
 				i++;
 			}
 
-			this._onData.fire(
+			onToken(
 				Word.newOnLine(word, token, columnNumber),
 			);
 		}

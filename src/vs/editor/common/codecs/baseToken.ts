@@ -14,6 +14,9 @@ export abstract class BaseToken {
 		private _range: Range,
 	) { }
 
+	/**
+	 * Get range associated with this token.
+	 */
 	public get range(): Range {
 		return this._range;
 	}
@@ -44,7 +47,7 @@ export abstract class BaseToken {
 	/**
 	 * Change `range` of the token with provided range components.
 	 */
-	public withRange(components: Partial<IRange>): this {
+	public updateRange(components: Partial<IRange>): this {
 		this._range = new Range(
 			components.startLineNumber ?? this.range.startLineNumber,
 			components.startColumn ?? this.range.startColumn,

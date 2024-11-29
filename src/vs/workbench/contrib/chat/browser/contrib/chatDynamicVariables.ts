@@ -142,7 +142,7 @@ export class ChatDynamicVariableModel extends Disposable implements IChatWidgetC
 			// subscribe to variable changes
 			variable.onUpdate(this.updateDecorations);
 			// start resolving the file references
-			variable.resolve();
+			variable.start();
 		}
 	}
 

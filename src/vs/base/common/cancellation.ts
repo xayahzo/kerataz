@@ -113,12 +113,13 @@ export class CancellationTokenSource {
 	}
 
 	cancel(): void {
+		this._parentListener?.dispose();
+
 		if (!this._token) {
 			// save an object by returning the default
 			// cancelled token when cancellation happens
 			// before someone asks for the token
 			this._token = CancellationToken.Cancelled;
-
 		} else if (this._token instanceof MutableToken) {
 			// actually cancel
 			this._token.cancel();
@@ -129,7 +130,7 @@ export class CancellationTokenSource {
 		if (cancel) {
 			this.cancel();
 		}
-		this._parentListener?.dispose();
+
 		if (!this._token) {
 			// ensure to initialize with an empty token if we had none
 			this._token = CancellationToken.None;

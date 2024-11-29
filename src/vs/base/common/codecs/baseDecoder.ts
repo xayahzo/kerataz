@@ -46,6 +46,8 @@ export abstract class BaseDecoder<
 	) {
 		super();
 
+		this._onData.fire = this._onData.fire.bind(this._onData);
+
 		this.tryOnStreamData = this.tryOnStreamData.bind(this);
 		this.onStreamError = this.onStreamError.bind(this);
 		this.onStreamEnd = this.onStreamEnd.bind(this);
@@ -65,6 +67,11 @@ export abstract class BaseDecoder<
 		assert(
 			!this.ended,
 			'Cannot start stream that has already ended.',
+		);
+
+		assert(
+			!this.disposed,
+			'Cannot start stream that has already disposed.',
 		);
 
 		this.stream.on('data', this.tryOnStreamData);
@@ -129,6 +136,12 @@ export abstract class BaseDecoder<
 			'Cannot subscribe to the `data` event because the decoder stream has already ended.',
 		);
 
+		// TODO: @legomushroom - is this correct?
+		assert(
+			!this.disposed,
+			'Cannot subscribe to the `error` event because the decoder stream has already disposed.',
+		);
+
 		let currentListeners = this._listeners.get('data');
 
 		if (!currentListeners) {
@@ -149,6 +162,12 @@ export abstract class BaseDecoder<
 			'Cannot subscribe to the `error` event because the decoder stream has already ended.',
 		);
 
+		// TODO: @legomushroom - is this correct?
+		assert(
+			!this.disposed,
+			'Cannot subscribe to the `error` event because the decoder stream has already disposed.',
+		);
+
 		let currentListeners = this._listeners.get('error');
 
 		if (!currentListeners) {
@@ -167,6 +186,12 @@ export abstract class BaseDecoder<
 		assert(
 			!this.ended,
 			'Cannot subscribe to the `end` event because the decoder stream has already ended.',
+		);
+
+		// TODO: @legomushroom - is this correct?
+		assert(
+			!this.disposed,
+			'Cannot subscribe to the `end` event because the decoder stream has already disposed.',
 		);
 
 		let currentListeners = this._listeners.get('end');
@@ -312,11 +337,67 @@ export abstract class BaseDecoder<
 		return asyncDecoder[Symbol.asyncIterator]();
 	}
 
-	public override dispose(): void {
+	/**
+	 * TODO: @legomushroom
+	 */
+	public transform<M extends NonNullable<unknown>>(
+		transform: (data: T) => (M | null),
+	): TransformedDecoder<this, M, T> {
+		// TODO: @legomushroom - consume the current object
+		// TODO: @legomushroom - throw if already used/started
+
+		return new TransformedDecoder(this, transform);
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	public disposed = false;
+
+	public override dispose(): this {
+		if (this.disposed) {
+			return this;
+		}
+
+		this.disposed = true;
+
 		this.onStreamEnd();
 
 		this.stream.destroy();
 		this.removeAllListeners();
 		super.dispose();
+
+		return this;
+	}
+}
+
+/**
+ * TODO: @legomushroom
+ */
+class TransformedDecoder<
+	I extends BaseDecoder<T, NonNullable<unknown>>,
+	M extends NonNullable<unknown>,
+	T extends NonNullable<unknown>,
+> extends BaseDecoder<M, T> {
+	constructor(
+		stream: I,
+		private readonly transformData: (data: T) => (M | null),
+	) {
+		super(stream);
+
+		// // TODO: @legomushroom - is this correct?
+		// Object.setPrototypeOf(this, this.constructor.prototype);
+		// // Object.setPrototypeOf(instance, this.constructor);
+		// // Object.setPrototypeOf(instance, this);
+	}
+
+	protected override onStreamData(data: T): void {
+		const newData = this.transformData(data);
+
+		if (newData === null) {
+			return;
+		}
+
+		this._onData.fire(newData);
 	}
 }

@@ -94,7 +94,7 @@ export class LinesDecoder extends BaseDecoder<TLineToken, VSBuffer> {
 				const endColumn = startColumn + token.byte.byteLength;
 				// emit the token updating its column start/end numbers based on
 				// the emitted line text length and previous end-of-the-line token
-				this._onData.fire(token.withRange({ startColumn, endColumn }));
+				this._onData.fire(token.updateRange({ startColumn, endColumn }));
 				// shorten the data buffer by the length of the token
 				this.buffer = this.buffer.slice(token.byte.byteLength);
 				// update the start column for the next token
