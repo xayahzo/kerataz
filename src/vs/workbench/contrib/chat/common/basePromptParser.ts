@@ -8,11 +8,10 @@ import { PromptLine, TPromptPart } from './promptLine.js';
 import { assert } from '../../../../base/common/assert.js';
 import { Emitter } from '../../../../base/common/event.js';
 import { PromptFileReference } from './promptFileReference.js';
-import { Disposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, DisposableMap } from '../../../../base/common/lifecycle.js';
 import { Location } from '../../../../editor/common/languages.js';
 import { ReadableStream } from '../../../../base/common/stream.js';
 import { BaseDecoder } from '../../../../base/common/codecs/baseDecoder.js';
-import { FileReference } from './codecs/chatPromptCodec/tokens/fileReference.js';
 import { Line } from '../../../../editor/common/codecs/linesCodec/tokens/line.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
@@ -28,17 +27,14 @@ import { FileOpenFailed, NotPromptSnippetFile, RecursiveReference, ParseError } 
 export type TErrorCondition = FileOpenFailed | RecursiveReference | NotPromptSnippetFile;
 
 /**
+ * File extension for the prompt snippets.
+ */
+export const PROMP_SNIPPET_FILE_EXTENSION: string = '.prompt.md';
+
+/**
  * Configuration key for the prompt snippets feature.
  */
 const PROMPT_SNIPPETS_CONFIG_KEY: string = 'chat.experimental.prompt-snippets';
-
-/**
- * TODO: @legomushroom - remove?
- */
-export interface IPromptFileReference {
-	uri: URI;
-	token: FileReference;
-}
 
 /**
  * TODO: @legomushroom
@@ -47,17 +43,17 @@ export abstract class BasePromptParser extends Disposable {
 	public disposed: boolean = false;
 
 	/**
-	 * TODO: @legomushroom
+	 * Prompt lines.
 	 */
-	private readonly lines: Map<number, PromptLine> = new Map();
+	private readonly lines: DisposableMap<number, PromptLine> = this._register(new DisposableMap());
 
 	/**
-	 * The event is fired when nested prompt snippet references are updated, if any.
+	 * The event is fired when lines or their content change.
 	 */
 	private readonly _onUpdate = this._register(new Emitter<void>());
 
 	/**
-	 * Subscribe to the `onUpdate`.
+	 * Subscribe to the `onUpdate` event that is fired when prompt tokens are updated.
 	 * @param callback The callback function to be called on updates.
 	 */
 	public onUpdate(callback: () => void): void {
@@ -124,6 +120,8 @@ export abstract class BasePromptParser extends Disposable {
 			this.onContentChanged.event((streamOrError) => {
 				this._resolveAttempted = true;
 
+				// TODO: @legomushroom - dispose all lines?
+
 				if (streamOrError instanceof ParseError) {
 					this._errorCondition = streamOrError;
 
@@ -137,17 +135,19 @@ export abstract class BasePromptParser extends Disposable {
 				});
 
 				stream.on('error', (error) => {
-					// console.log(`error: ${error}`);
+					// TODO: @legomushroom - handle the error?
 					stream.destroy();
 				});
 
-				stream.on('end', () => {
-					stream.destroy();
-				});
+				stream.on('end', stream.destroy.bind(stream));
 
 				if (stream instanceof BaseDecoder) {
 					stream.start();
 				}
+				// else {
+				// 	// TODO: @legomushroom - remove?
+				// 	stream.resume();
+				// }
 			}),
 		);
 	}
@@ -179,15 +179,7 @@ export abstract class BasePromptParser extends Disposable {
 	private disposeLine(
 		lineNumber: number,
 	): this {
-		const line = this.lines.get(lineNumber);
-
-		// TODO: @legomushroom - throw if no line found?
-		if (!line) {
-			return this;
-		}
-
-		line.dispose();
-		this.lines.delete(lineNumber);
+		this.lines.deleteAndDispose(lineNumber);
 
 		return this;
 	}
@@ -259,7 +251,7 @@ export abstract class BasePromptParser extends Disposable {
 
 		// get getTokensed children references
 		for (const line of this.lines.values()) {
-			result.push(...line.getTokens());
+			result.push(...line.tokens);
 		}
 
 		return result;
@@ -268,7 +260,7 @@ export abstract class BasePromptParser extends Disposable {
 	/**
 	 * Get list of all valid file references.
 	 */
-	public get validFileReferences(): readonly IPromptFileReference[] {
+	public get validFileReferences(): readonly PromptFileReference[] {
 		return this.tokens
 			// TODO: @legomushroom
 			// // skip the root reference itself (this variable)
@@ -294,7 +286,7 @@ export abstract class BasePromptParser extends Disposable {
 
 	/**
 	 * Check if the current reference is equal to a given one.
-	 * TODO: @legomushroom - reemove?
+	 * TODO: @legomushroom - remove?
 	 */
 	public equals<T extends BasePromptParser>(other: T): boolean {
 		if (!this.sameUri(other.uri)) {
@@ -305,36 +297,48 @@ export abstract class BasePromptParser extends Disposable {
 	}
 
 	/**
+	 * Check if the current reference points to a given resource.
+	 */
+	public sameUri(otherUri: URI): boolean {
+		return this.uri.toString() === otherUri.toString();
+	}
+
+	/**
+	 * Check if the provided URI points to a prompt snippet.
+	 */
+	public static isPromptSnippet(uri: URI): boolean {
+		return uri.path.endsWith(PROMP_SNIPPET_FILE_EXTENSION);
+	}
+
+	/**
+	 * Check if the current reference points to a prompt snippet file.
+	 */
+	public get isPromptSnippet(): boolean {
+		return BasePromptParser.isPromptSnippet(this.uri);
+	}
+
+	/**
 	 * Returns a string representation of this object.
 	 */
 	public override toString(): string {
 		return `prompt:${this.uri.path}`;
 	}
 
+	/**
+	 * @inheritdoc
+	 */
 	public override dispose() {
 		if (this.disposed) {
 			return;
 		}
 
-		this.disposed = true;
-
-		for (const line of this.lines.values()) {
-			line.dispose();
-		}
-		this.lines.clear();
+		this.disposed = true; // TODO: @legomushroom - reuse a common class?
+		this.lines.clearAndDisposeAll();
 		this._onUpdate.fire();
 
 		super.dispose();
 	}
-
-	/**
-	 * Check if the current reference points to a given resource.
-	 */
-	public sameUri(otherUri: URI): boolean {
-		return this.uri.toString() === otherUri.toString();
-	}
 }
-
 
 // /**
 //  * Represents a file reference in the chatbot prompt, e.g. `#file:./path/to/file.md`.

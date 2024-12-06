@@ -16,14 +16,6 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 
 /**
- * TODO: @legomushroom - list
- *
- *  - add the test contribution for the `TextModelPromptParser`
- *  - add comments
- *  - add unit tests
- */
-
-/**
  * TODO: @legomushroom
  *
  * 	- move to the correct place
@@ -66,7 +58,7 @@ export class TextModelPromptParser extends BasePromptParser {
 
 		// TODO: @legomushroom - throw if disposed?
 
-		// initiate parsing the model contents
+		// initiate parsing the model contents (`null` means all lines)
 		this.onContentsChanged(null);
 
 		return this;

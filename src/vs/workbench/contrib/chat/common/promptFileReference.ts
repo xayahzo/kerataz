@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { TPromptPart } from './promptLine.js';
 import { URI } from '../../../../base/common/uri.js';
 import { BasePromptParser } from './basePromptParser.js';
 import { Emitter } from '../../../../base/common/event.js';
@@ -21,13 +22,17 @@ import { FileChangesEvent, FileChangeType, IFileService } from '../../../../plat
 import { ResolveError, FileOpenFailed, NotPromptSnippetFile, ParseError } from './promptFileReferenceErrors.js';
 
 /**
- * TODO: @legomushroom - move to the correct place
+ * TODO: @legomushroom - list
+ *
+ *  - move out language features to a separate git branch
+ *  - add comments
+ *  - add examples
+ *  - add unit tests
  */
 
 /**
- * File extension for the prompt snippet files.
+ * TODO: @legomushroom - move to the correct place
  */
-const PROMP_SNIPPET_FILE_EXTENSION: string = '.prompt.md';
 
 /**
  * TODO: @legomushroom
@@ -53,7 +58,7 @@ export class FilePromptParser extends BasePromptParser {
 
 		// make sure the variable is updated on file changes
 		// but only for the prompt snippet files
-		if (this.isPromptSnippetFile) {
+		if (this.isPromptSnippet) {
 			this._register(
 				this.fileService.onDidFilesChange(this.onFilesChanged.bind(this)),
 			);
@@ -97,7 +102,7 @@ export class FilePromptParser extends BasePromptParser {
 	@cancelOnDispose
 	private async getContentsStream(): Promise<BaseDecoder<Line>> {
 		// if URI doesn't point to a prompt snippet file, don't try to resolve it
-		if (this.uri.path.endsWith(PROMP_SNIPPET_FILE_EXTENSION) === false) {
+		if (!BasePromptParser.isPromptSnippet(this.uri)) {
 			throw new NotPromptSnippetFile(this.uri);
 		}
 
@@ -133,11 +138,17 @@ export class FilePromptParser extends BasePromptParser {
 					return null;
 				});
 
+			cts.dispose(false); // TODO: @legomushroom - remove?
+
 			return stream;
 		} catch (error) {
-			throw new FileOpenFailed(this.uri, error);
-		} finally {
 			cts.dispose(true);
+
+			if (error instanceof ParseError) {
+				throw error;
+			}
+
+			throw new FileOpenFailed(this.uri, error); // TODO: @legomushroom - use a better error type
 		}
 	}
 
@@ -171,10 +182,34 @@ export class FilePromptParser extends BasePromptParser {
 	}
 
 	/**
-	 * Check if the current reference points to a prompt snippet file.
+	 * TODO: @legomushroom
 	 */
-	public get isPromptSnippetFile(): boolean {
-		return this.uri.path.endsWith(PROMP_SNIPPET_FILE_EXTENSION);
+	public get tokensTree(): readonly TPromptPart[] {
+		const result: TPromptPart[] = [];
+
+		for (const token of this.tokens) {
+			result.push(token);
+
+			if (token instanceof PromptFileReference) {
+				result.push(...token.tokensTree);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	public get allValidFileReferenceUris(): readonly URI[] {
+		const result: PromptFileReference[] = [];
+
+		for (const fileReference of this.validFileReferences) {
+			result.push(fileReference);
+			result.push(...fileReference.validFileReferences);
+		}
+
+		return result.map(child => child.uri);
 	}
 
 	/**
@@ -184,7 +219,6 @@ export class FilePromptParser extends BasePromptParser {
 		return `file-prompt:${this.uri.path}`;
 	}
 }
-
 
 /**
  * TODO: @legomushroom
@@ -205,5 +239,12 @@ export class PromptFileReference extends FilePromptParser {
 	) {
 		const fileUri = extUri.resolvePath(dirname, token.path);
 		super(fileUri, seenReferences, fileService, initService, configService);
+	}
+
+	/**
+	 * Returns a string representation of this object.
+	 */
+	public override toString() {
+		return `${FileReference.TOKEN_START}${this.uri.path}`;
 	}
 }

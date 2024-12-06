@@ -33,7 +33,7 @@ export class PromptLine extends Disposable {
 	/**
 	 * TODO: @legomushroom
 	 */
-	public readonly tokens: TPromptPart[] = [];
+	private _tokens: TPromptPart[] = [];
 
 	private readonly _onUpdate = this._register(new Emitter<void>());
 
@@ -84,10 +84,9 @@ export class PromptLine extends Disposable {
 					this.dirname,
 					seenReferences,
 				);
+				this._tokens.push(fileReference);
 
 				fileReference.onUpdate(this._onUpdate.fire);
-				this.tokens.push(fileReference);
-
 				fileReference.start();
 
 				this._onUpdate.fire();
@@ -116,15 +115,11 @@ export class PromptLine extends Disposable {
 	/**
 	 * TODO: @legomushroom
 	 */
-	public getTokens(): readonly TPromptPart[] {
+	public get tokens(): readonly TPromptPart[] {
 		const result = [];
 
-		for (const token of this.tokens) {
+		for (const token of this._tokens) {
 			result.push(token);
-
-			if (token instanceof PromptFileReference) {
-				result.push(...token.tokens);
-			}
 		}
 
 		return result;
@@ -145,7 +140,7 @@ export class PromptLine extends Disposable {
 	public override dispose(): void {
 		this.decoder.dispose();
 
-		for (const token of this.tokens) {
+		for (const token of this._tokens) {
 			// if token has a `dispose` function, call it
 			if ('dispose' in token && typeof token.dispose === 'function') {
 				token.dispose();

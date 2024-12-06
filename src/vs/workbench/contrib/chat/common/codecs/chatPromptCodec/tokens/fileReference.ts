@@ -45,6 +45,14 @@ export class FileReference extends BaseToken {
 			`The reference must start with "${TOKEN_START}", got ${text}.`,
 		);
 
+		// TODO: @legomushroom
+		if (text === TOKEN_START) {
+			return new FileReference(
+				word.range,
+				'',
+			);
+		}
+
 		const maybeReference = text.split(TOKEN_START);
 
 		assert(

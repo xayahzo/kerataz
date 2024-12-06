@@ -3,11 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { TPromptPart } from './promptLine.js';
+import { basename } from '../../../../base/common/path.js';
+import { Emitter } from '../../../../base/common/event.js';
+import { PromptFileReference } from './promptFileReference.js';
+import { assertNever } from '../../../../base/common/assert.js';
+import { IRange } from '../../../../editor/common/core/range.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { TextModelPromptParser } from './textModelPromptParser.js';
-import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { ModelDecorationOptions } from '../../../../editor/common/model/textModel.js';
 import { ITextModel, TrackedRangeStickiness } from '../../../../editor/common/model.js';
+import { IMarkdownString, MarkdownString } from '../../../../base/common/htmlContent.js';
 import { chatSlashCommandBackground, chatSlashCommandForeground } from './chatColors.js';
 import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -21,9 +27,89 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
  */
 
 /**
- * TODO: @legomushroom
+ * Disposable object that tracks its disposed state and provides
+ * the `onDispose` event to subscribe for. The disposable state
+ * of the object can be checked with a public `disposed` property.
+ *
+ * TODO: @legomushroom - what to do with this object?
  */
-export class TextModelPromptDecorator extends Disposable {
+class TrackedDisposable extends Disposable {
+	/**
+	 * Private emitter for the `onDispose` event.
+	 */
+	private readonly _onDispose = this._register(new Emitter<void>());
+
+	/**
+	 * The event is fired when this object is disposed.
+	 * @param callback The callback function to be called on updates.
+	 */
+	public readonly onDispose = this._onDispose.event;
+
+	/**
+	 * Private field to store the disposed state of this object.
+	 */
+	private _disposed: boolean = false;
+
+	/**
+	 * Check if this object is disposed.
+	 */
+	public get disposed(): boolean {
+		return this._disposed;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public override dispose(): void {
+		if (this._disposed) {
+			return;
+		}
+
+		this._disposed = true;
+		this._onDispose.fire();
+
+		super.dispose();
+	}
+}
+
+/**
+ * Decoration object.
+ *
+ * TODO: @legomushroom - move to the correct place?
+ */
+interface IModelDecoration {
+	/**
+	 * Range of the decoration.
+	 */
+	range: IRange;
+
+	/**
+	 * Associated decoration options.
+	 */
+	options: ModelDecorationOptions;
+}
+
+/**
+ * Enumeration of prompt syntax decoration CSS class names.
+ *
+ * TODO: @legomushroom - move to the correct place?
+ */
+enum DecorationClassNames {
+	/**
+	 * CSS class name for `default` prompt syntax decoration.
+	 */
+	default = 'prompt-decoration',
+
+	/**
+	 * CSS class name for `file reference` prompt syntax decoration.
+	 */
+	fileReference = DecorationClassNames.default,
+}
+
+/**
+ * Prompt syntax decorations provider for text models.
+ */
+export class TextModelPromptDecorator extends TrackedDisposable {
 	/**
 	 * Associated prompt parser instance.
 	 */
@@ -32,24 +118,15 @@ export class TextModelPromptDecorator extends Disposable {
 	/**
 	 * List of IDs of registered text model decorations.
 	 */
-	private readonly decorations: string[] = [];
-
-	/**
-	 * Decoration options for prompt tokens.
-	 */
-	public static readonly promptDecoration = ModelDecorationOptions.register({
-		description: 'Prompt decoration.', // TODO: @legomushroom - fix decription text to be based on the token type
-		stickiness: TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
-		className: 'prompt-decoration',
-		showIfCollapsed: false,
-		hoverMessage: new MarkdownString('test'), // TODO: @legomushroom - fix the hover message
-	});
+	private readonly registeredDecorationIDs: string[] = [];
 
 	constructor(
 		private readonly editor: ITextModel,
 		@IInstantiationService initService: IInstantiationService,
 	) {
 		super();
+
+		this.editor.onWillDispose(this.dispose.bind(this));
 
 		this.parser = initService.createInstance(TextModelPromptParser, editor, []);
 		this.parser.onUpdate(this.onPromptParserUpdate.bind(this));
@@ -60,6 +137,7 @@ export class TextModelPromptDecorator extends Disposable {
 	 * Handler for the prompt parser update event.
 	 */
 	private onPromptParserUpdate(): this {
+		// TODO: @legomushroom - add a tracking issue for the work to update existing decorations instead of always re - creating them
 		this.removeAllDecorations();
 		this.addDecorations();
 
@@ -71,13 +149,13 @@ export class TextModelPromptDecorator extends Disposable {
 	 */
 	private addDecorations(): this {
 		this.editor.changeDecorations((accessor) => {
-			for (const token of this.parser.tokens) {
-				const decorationId = accessor.addDecoration(
-					token.range,
-					TextModelPromptDecorator.promptDecoration,
+			for (const decoration of this.decorations) {
+				const decorationID = accessor.addDecoration(
+					decoration.range,
+					decoration.options,
 				);
 
-				this.decorations.push(decorationId);
+				this.registeredDecorationIDs.push(decorationID);
 			}
 		});
 
@@ -85,15 +163,72 @@ export class TextModelPromptDecorator extends Disposable {
 	}
 
 	/**
+	 * Get decorations for all currently available prompt tokens.
+	 */
+	private get decorations(): readonly IModelDecoration[] {
+		const result: IModelDecoration[] = [];
+		const { tokens } = this.parser; // TODO: @legomushroom - get the tokens for the current document only
+
+		for (const token of tokens) {
+			result.push({
+				range: token.range,
+				options: this.getDecorationFor(token),
+			});
+		}
+
+		return result;
+	}
+
+	/**
+	 * Get decoration options for a provided prompt token.
+	 */
+	private getDecorationFor(token: TPromptPart): ModelDecorationOptions {
+		const className = DecorationClassNames.default; // TODO: @legomushroom - update this
+
+		return ModelDecorationOptions.createDynamic({
+			description: 'Prompt syntax decoration.', // TODO: @legomushroom - fix decription text to be based on the token type
+			className,
+			hoverMessage: this.getHoveMessageFor(token),
+			stickiness: TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+		});
+	}
+
+	/**
+	 * Get decoration hover message for a provided prompt token.
+	 */
+	private getHoveMessageFor(token: TPromptPart): IMarkdownString[] {
+		if (token instanceof PromptFileReference) {
+			const result = [
+				new MarkdownString(basename(token.uri.path)),
+			];
+
+			// TODO: @legomushroom - also handle error conditions on the file reference
+
+			for (const uri of token.allValidFileReferenceUris) {
+				result.push(new MarkdownString(
+					`  - ${basename(uri.path)}`,
+				));
+			}
+
+			return result;
+		}
+
+		assertNever(
+			token,
+			`Faild to create prompt token hover message, unexpected token type: '${token}'.`,
+		);
+	}
+
+	/**
 	 * Remove all existing decorations.
 	 */
 	private removeAllDecorations(): this {
 		this.editor.changeDecorations((accessor) => {
-			for (const decoration of this.decorations) {
+			for (const decoration of this.registeredDecorationIDs) {
 				accessor.removeDecoration(decoration);
 			}
 		});
-		this.decorations.splice(0);
+		this.registeredDecorationIDs.splice(0);
 
 		return this;
 	}
@@ -132,6 +267,5 @@ registerThemingParticipant((theme, collector) => {
 		styles.push(`color: ${backgroundColor};`);
 	}
 
-	const { className } = TextModelPromptDecorator.promptDecoration;
-	collector.addRule(`.monaco-editor .${className} { ${styles.join(' ')} }`);
+	collector.addRule(`.monaco-editor .${DecorationClassNames.default} { ${styles.join(' ')} }`);
 });
