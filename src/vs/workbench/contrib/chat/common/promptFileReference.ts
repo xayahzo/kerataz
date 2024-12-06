@@ -20,15 +20,6 @@ import { IConfigurationService } from '../../../../platform/configuration/common
 import { FileChangesEvent, FileChangeType, IFileService } from '../../../../platform/files/common/files.js';
 import { ResolveError, FileOpenFailed, NotPromptSnippetFile, ParseError } from './promptFileReferenceErrors.js';
 
-
-/**
- * TODO: @legomushroom - list
- *
- *  - add the test contribution for the `TextModelPromptParser`
- *  - add comments
- *  - add unit tests
- */
-
 /**
  * TODO: @legomushroom - move to the correct place
  */
@@ -199,6 +190,11 @@ export class FilePromptParser extends BasePromptParser {
  * TODO: @legomushroom
  */
 export class PromptFileReference extends FilePromptParser {
+	/**
+	 * The range of the file reference token.
+	 */
+	public readonly range = this.token.range;
+
 	constructor(
 		public readonly token: FileReference,
 		dirname: URI,

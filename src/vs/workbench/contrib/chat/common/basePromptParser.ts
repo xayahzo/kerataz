@@ -33,7 +33,7 @@ export type TErrorCondition = FileOpenFailed | RecursiveReference | NotPromptSni
 const PROMPT_SNIPPETS_CONFIG_KEY: string = 'chat.experimental.prompt-snippets';
 
 /**
- * TODO: @legomushroom
+ * TODO: @legomushroom - remove?
  */
 export interface IPromptFileReference {
 	uri: URI;
@@ -250,7 +250,7 @@ export abstract class BasePromptParser extends Disposable {
 	/**
 	 * TODO: @legomushroom
 	 */
-	public getTokens(): readonly TPromptPart[] {
+	public get tokens(): readonly TPromptPart[] {
 		const result = [];
 
 		// TODO: @legomushroom
@@ -269,7 +269,7 @@ export abstract class BasePromptParser extends Disposable {
 	 * Get list of all valid file references.
 	 */
 	public get validFileReferences(): readonly IPromptFileReference[] {
-		return this.getTokens()
+		return this.tokens
 			// TODO: @legomushroom
 			// // skip the root reference itself (this variable)
 			// .slice(1)

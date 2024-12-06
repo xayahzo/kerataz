@@ -135,7 +135,7 @@ class TestPromptFileReference extends Disposable {
 		await wait(100);
 
 		// resolve the root file reference including all nested references
-		const resolvedReferences = rootReference.getTokens();
+		const resolvedReferences = rootReference.tokens();
 
 		for (let i = 0; i < this.expectedReferences.length; i++) {
 			const expectedReference = this.expectedReferences[i];

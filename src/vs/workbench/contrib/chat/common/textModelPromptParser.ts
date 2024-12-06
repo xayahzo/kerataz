@@ -16,6 +16,14 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 
 /**
+ * TODO: @legomushroom - list
+ *
+ *  - add the test contribution for the `TextModelPromptParser`
+ *  - add comments
+ *  - add unit tests
+ */
+
+/**
  * TODO: @legomushroom
  *
  * 	- move to the correct place

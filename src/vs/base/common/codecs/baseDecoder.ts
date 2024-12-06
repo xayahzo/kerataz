@@ -350,7 +350,9 @@ export abstract class BaseDecoder<
 	}
 
 	/**
-	 * TODO: @legomushroom
+	 * Check whether this object has been disposed.
+	 *
+	 * TODO: @legomushroom - make readonly
 	 */
 	public disposed = false;
 

@@ -123,7 +123,7 @@ export class PromptLine extends Disposable {
 			result.push(token);
 
 			if (token instanceof PromptFileReference) {
-				result.push(...token.getTokens());
+				result.push(...token.tokens);
 			}
 		}
 
