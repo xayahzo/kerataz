@@ -11,12 +11,13 @@ import { extUri } from '../../../../../base/common/resources.js';
 import { isWindows } from '../../../../../base/common/platform.js';
 import { Range } from '../../../../../editor/common/core/range.js';
 import { randomInt } from '../../../../../base/common/numbers.js';
+import { TErrorCondition } from '../../common/basePromptParser.js';
+import { FilePromptParser } from '../../common/filePromptParser.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { NullPolicyService } from '../../../../../platform/policy/common/policy.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
-import { FilePromptParser, TErrorCondition } from '../../common/promptFileReference.js';
 import { FileReference } from '../../common/codecs/chatPromptCodec/tokens/fileReference.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
@@ -27,19 +28,21 @@ import { FileOpenFailed, RecursiveReference, NotPromptSnippetFile } from '../../
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 
 /**
- * TODO: @legomushroom
+ * Helper function that allows to await for a specified amount of time.
+ * @param ms The amount of time to wait in milliseconds.
  */
-function waitRandom(maxMs: number, minMs: number = 0): Promise<void> {
-	const delayMs = randomInt(maxMs, minMs);
-	return new Promise(resolve => setTimeout(resolve, delayMs));
-}
+const wait = (ms: number): Promise<void> => {
+	return new Promise(resolve => setTimeout(resolve, ms));
+};
 
 /**
- * TODO: @legomushroom
+ * Helper function that allows to await for a random amount of time.
+ * @param maxMs The `maximum` amount of time to wait, in milliseconds.
+ * @param minMs [`optional`] The `minimum` amount of time to wait, in milliseconds.
  */
-function wait(ms: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
+const waitRandom = (maxMs: number, minMs: number = 0): Promise<void> => {
+	return wait(randomInt(maxMs, minMs));
+};
 
 /**
  * Represents a file system node.
