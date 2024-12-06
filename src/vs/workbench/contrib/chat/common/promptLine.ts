@@ -62,10 +62,12 @@ export class PromptLine extends Disposable {
 
 		const { startLineNumber } = lineToken.range;
 		this.decoder.onData((token) => {
+			// TODO: @legomushroom
 			if (this.decoder.isEnded) {
 				console.log('oops!');
 			}
 
+			// TODO: @legomushroom
 			if (this.decoder.disposed) {
 				console.log('oops!');
 			}

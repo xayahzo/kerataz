@@ -12,10 +12,11 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { Location } from '../../../../editor/common/languages.js';
 import { ReadableStream } from '../../../../base/common/stream.js';
 import { BaseDecoder } from '../../../../base/common/codecs/baseDecoder.js';
+import { FileReference } from './codecs/chatPromptCodec/tokens/fileReference.js';
 import { Line } from '../../../../editor/common/codecs/linesCodec/tokens/line.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
-import { ResolveError, FileOpenFailed, NotPromptSnippetFile, RecursiveReference } from './promptFileReferenceErrors.js';
+import { FileOpenFailed, NotPromptSnippetFile, RecursiveReference, ParseError } from './promptFileReferenceErrors.js';
 
 /**
  * TODO: @legomushroom - move to the correct place
@@ -30,6 +31,14 @@ export type TErrorCondition = FileOpenFailed | RecursiveReference | NotPromptSni
  * Configuration key for the prompt snippets feature.
  */
 const PROMPT_SNIPPETS_CONFIG_KEY: string = 'chat.experimental.prompt-snippets';
+
+/**
+ * TODO: @legomushroom
+ */
+export interface IPromptFileReference {
+	uri: URI;
+	token: FileReference;
+}
 
 /**
  * TODO: @legomushroom
@@ -55,13 +64,13 @@ export abstract class BasePromptParser extends Disposable {
 		this._register(this._onUpdate.event(callback));
 	}
 
-	private _errorCondition?: TErrorCondition;
+	private _errorCondition?: ParseError;
 
 	/**
 	 * If file reference resolution fails, this attribute will be set
 	 * to an error instance that describes the error condition.
 	 */
-	public get errorCondition(): TErrorCondition | undefined {
+	public get errorCondition(): ParseError | undefined {
 		return this._errorCondition;
 	}
 
@@ -84,7 +93,7 @@ export abstract class BasePromptParser extends Disposable {
 
 	constructor(
 		private readonly promptUri: URI | Location,
-		protected readonly onContentChanged: Emitter<ReadableStream<Line> | TErrorCondition>,
+		protected readonly onContentChanged: Emitter<ReadableStream<Line> | ParseError>,
 		seenReferences: string[] = [],
 		@IInstantiationService protected readonly instantiationService: IInstantiationService,
 		@IConfigurationService protected readonly configService: IConfigurationService,
@@ -115,7 +124,7 @@ export abstract class BasePromptParser extends Disposable {
 			this.onContentChanged.event((streamOrError) => {
 				this._resolveAttempted = true;
 
-				if (streamOrError instanceof ResolveError) {
+				if (streamOrError instanceof ParseError) {
 					this._errorCondition = streamOrError;
 
 					return;
@@ -257,9 +266,9 @@ export abstract class BasePromptParser extends Disposable {
 	}
 
 	/**
-	 * Get list of all valid child references.
+	 * Get list of all valid file references.
 	 */
-	public get validFileReferences(): readonly PromptFileReference[] {
+	public get validFileReferences(): readonly IPromptFileReference[] {
 		return this.getTokens()
 			// TODO: @legomushroom
 			// // skip the root reference itself (this variable)
