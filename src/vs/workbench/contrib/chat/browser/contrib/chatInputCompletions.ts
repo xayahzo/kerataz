@@ -36,7 +36,7 @@ import { ChatRequestAgentPart, ChatRequestAgentSubcommandPart, ChatRequestTextPa
 import { IChatSlashCommandService } from '../../common/chatSlashCommands.js';
 import { IChatVariablesService, IDynamicVariable } from '../../common/chatVariables.js';
 import { ILanguageModelToolsService } from '../../common/languageModelToolsService.js';
-import { PromptFileCompletions } from '../../common/promptCompletions.js';
+import { PromptCommandCompletions, PromptFilePathCompletions } from '../../common/promptCompletions.js';
 import { TextModelPromptDecoratorsProvider } from '../../common/textModelPromptDecoratorsProvider.js';
 import { ChatEditingSessionSubmitAction, ChatSubmitAction } from '../actions/chatExecuteActions.js';
 import { IChatWidget, IChatWidgetService } from '../chat.js';
@@ -718,7 +718,9 @@ Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench).regi
 Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
 	.registerWorkbenchContribution(TextModelPromptDecoratorsProvider, LifecyclePhase.Eventually);
 Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
-	.registerWorkbenchContribution(PromptFileCompletions, LifecyclePhase.Eventually);
+	.registerWorkbenchContribution(PromptCommandCompletions, LifecyclePhase.Eventually);
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
+	.registerWorkbenchContribution(PromptFilePathCompletions, LifecyclePhase.Eventually);
 
 export interface IChatCompletionRangeResult {
 	insert: Range;
