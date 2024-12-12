@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TPromptPart } from './promptLine.js';
+import { TPromptPart } from './basePromptTypes.js';
 import { basename } from '../../../../base/common/path.js';
 import { Emitter } from '../../../../base/common/event.js';
-import { PromptFileReference } from './promptFileReference.js';
 import { assertNever } from '../../../../base/common/assert.js';
 import { IRange } from '../../../../editor/common/core/range.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
@@ -197,7 +196,7 @@ export class TextModelPromptDecorator extends TrackedDisposable {
 	 * Get decoration hover message for a provided prompt token.
 	 */
 	private getHoveMessageFor(token: TPromptPart): IMarkdownString[] {
-		if (token instanceof PromptFileReference) {
+		if (token.type === 'file-reference') {
 			const result = [
 				new MarkdownString(basename(token.uri.path)),
 			];
@@ -214,8 +213,8 @@ export class TextModelPromptDecorator extends TrackedDisposable {
 		}
 
 		assertNever(
-			token,
-			`Faild to create prompt token hover message, unexpected token type: '${token}'.`,
+			token.type,
+			`Faild to create prompt token hover message, unexpected token type: '${token.type}'.`,
 		);
 	}
 

@@ -25,8 +25,8 @@ import { ChatWidget, IChatWidgetContrib } from '../chatWidget.js';
 import { IChatRequestVariableValue, IChatVariablesService, IDynamicVariable } from '../../common/chatVariables.js';
 import { ISymbolQuickPickItem } from '../../../search/browser/symbolsQuickAccess.js';
 import { ChatFileReference } from './chatDynamicVariables/chatFileReference.js';
-import { PromptFileReference } from '../../common/promptFileReference.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
+import { BasePromptParser } from '../../common/basePromptParser.js';
 
 export const dynamicVariableDecorationType = 'chat-dynamic-variable';
 
@@ -127,7 +127,7 @@ export class ChatDynamicVariableModel extends Disposable implements IChatWidgetC
 
 	addReference(ref: IDynamicVariable): void {
 		// use `ChatFileReference` for file references and `IDynamicVariable` for other variables
-		const promptSnippetsEnabled = PromptFileReference.promptSnippetsEnabled(this.configService);
+		const promptSnippetsEnabled = BasePromptParser.promptSnippetsEnabled(this.configService);
 		const variable = (ref.id === 'vscode.file' && promptSnippetsEnabled)
 			? this.instantiationService.createInstance(ChatFileReference, ref)
 			: ref;

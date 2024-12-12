@@ -614,6 +614,8 @@ export class FileService extends Disposable implements IFileService {
 			// Re-throw errors as file operation errors but preserve
 			// specific errors (such as not modified since)
 			throw this.restoreReadError(error, resource, readFileOptions);
+		} finally {
+			cancellableSource.dispose(true);
 		}
 	}
 

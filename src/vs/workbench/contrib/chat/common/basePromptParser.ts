@@ -3,19 +3,144 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+// TODO: @legomushroom - cleanup
 import { URI } from '../../../../base/common/uri.js';
-import { PromptLine, TPromptPart } from './promptLine.js';
-import { assert } from '../../../../base/common/assert.js';
+import { IPromptFileReference, IPromptProvider, TPromptPart } from './basePromptTypes.js';
+import { assert, assertNever } from '../../../../base/common/assert.js';
 import { Emitter } from '../../../../base/common/event.js';
-import { PromptFileReference } from './promptFileReference.js';
-import { Disposable, DisposableMap } from '../../../../base/common/lifecycle.js';
-import { Location } from '../../../../editor/common/languages.js';
-import { ReadableStream } from '../../../../base/common/stream.js';
 import { BaseDecoder } from '../../../../base/common/codecs/baseDecoder.js';
 import { Line } from '../../../../editor/common/codecs/linesCodec/tokens/line.js';
+import { Disposable, DisposableMap } from '../../../../base/common/lifecycle.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { FileOpenFailed, NotPromptSnippetFile, RecursiveReference, ParseError } from './promptFileReferenceErrors.js';
+import { FilePromptContentProvider } from './filePromptContentProvider.js';
+import { FileReference } from './codecs/chatPromptCodec/tokens/fileReference.js';
+import { extUri } from '../../../../base/common/resources.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
+import { newWriteableStream } from '../../../../base/common/stream.js';
+import { ChatPromptCodec } from './codecs/chatPromptCodec/chatPromptCodec.js';
+import { ChatPromptDecoder } from './codecs/chatPromptCodec/chatPromptDecoder.js';
+
+/**
+ * TODO: @legomushroom - move to the correct place
+ */
+
+/**
+ * TODO: @legomushroom
+ */
+export class PromptLine extends Disposable {
+	/**
+	 * TODO: @legomushroom
+	 */
+	private _tokens: TPromptPart[] = [];
+
+	private readonly _onUpdate = this._register(new Emitter<void>());
+
+	public onUpdate(callback: () => void): void {
+		this._register(this._onUpdate.event(callback));
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	private decoder: ChatPromptDecoder;
+
+	constructor(
+		public readonly lineToken: Line,
+		public readonly dirname: URI,
+		protected readonly seenReferences: string[] = [],
+		@IInstantiationService protected readonly instantiationService: IInstantiationService,
+		@IConfigurationService protected readonly configService: IConfigurationService,
+	) {
+		super();
+
+		this._onUpdate.fire = this._onUpdate.fire.bind(this._onUpdate);
+
+		const stream = newWriteableStream<VSBuffer>(null);
+		this.decoder = this._register(ChatPromptCodec.decode(stream));
+
+		const { startLineNumber } = lineToken.range;
+		this.decoder.onData((token) => {
+			// TODO: @legomushroom
+			if (this.decoder.isEnded) {
+				console.log('oops!');
+			}
+
+			// TODO: @legomushroom
+			if (this.decoder.disposed) {
+				console.log('oops!');
+			}
+
+			token.updateRange({
+				startLineNumber: startLineNumber,
+				endLineNumber: startLineNumber, // TODO: @legomushroom - do we care about the end line numbers?
+			});
+
+			if (token instanceof FileReference) {
+				const fileReference = this.instantiationService
+					.createInstance(PromptFileReference, token, dirname, seenReferences);
+
+				this._tokens.push(fileReference);
+
+				fileReference.onUpdate(this._onUpdate.fire);
+				fileReference.start();
+
+				this._onUpdate.fire(); // TODO: @legomushroom - do we need this?
+
+				return;
+			}
+
+			// TODO: @legomushroom - better way to error out on unsupported token
+			assertNever(
+				token,
+				`Unsupported token '${token}'.`,
+			);
+		});
+
+		this.decoder.onError((error) => {
+			// TODO: @legomushroom - handle the error
+			console.log(`[line decoder] error: ${error}`);
+
+			this._onUpdate.fire();
+		});
+
+		stream.write(VSBuffer.fromString(this.lineToken.text));
+		stream.end();
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	public get tokens(): readonly TPromptPart[] {
+		return [...this._tokens];
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	public start(): this {
+		// TODO: @legomushroom - handle the `onError` and `onEnd` events
+
+		// TODO: @legomushroom - do we need this?
+		this.decoder.start();
+
+		return this;
+	}
+
+	public override dispose(): void {
+		this.decoder.dispose();
+
+		for (const token of this._tokens) {
+			// if token has a `dispose` function, call it
+			if ('dispose' in token && typeof token.dispose === 'function') {
+				token.dispose();
+			}
+		}
+
+		super.dispose();
+	}
+}
 
 /**
  * TODO: @legomushroom - move to the correct place
@@ -39,7 +164,7 @@ const PROMPT_SNIPPETS_CONFIG_KEY: string = 'chat.experimental.prompt-snippets';
 /**
  * TODO: @legomushroom
  */
-export abstract class BasePromptParser extends Disposable {
+export class BasePromptParser<T extends IPromptProvider> extends Disposable {
 	public disposed: boolean = false;
 
 	/**
@@ -88,13 +213,15 @@ export abstract class BasePromptParser extends Disposable {
 	}
 
 	constructor(
-		private readonly promptUri: URI | Location,
-		protected readonly onContentChanged: Emitter<ReadableStream<Line> | ParseError>,
+		private readonly promptContentsProvider: T,
 		seenReferences: string[] = [],
 		@IInstantiationService protected readonly instantiationService: IInstantiationService,
 		@IConfigurationService protected readonly configService: IConfigurationService,
 	) {
 		super();
+
+		this._onUpdate.fire = this._onUpdate.fire.bind(this._onUpdate);
+		this._register(promptContentsProvider);
 
 		// to prevent infinite file recursion, we keep track of all references in
 		// the current branch of the file reference tree and check if the current
@@ -114,10 +241,8 @@ export abstract class BasePromptParser extends Disposable {
 		// even if the file doesn't exist, we would never end up in the recursion
 		seenReferences.push(this.uri.path);
 
-		this._onUpdate.fire = this._onUpdate.fire.bind(this._onUpdate);
-
 		this._register(
-			this.onContentChanged.event((streamOrError) => {
+			this.promptContentsProvider.onContentChanged((streamOrError) => {
 				this._resolveAttempted = true;
 
 				// TODO: @legomushroom - dispose all lines?
@@ -144,10 +269,6 @@ export abstract class BasePromptParser extends Disposable {
 				if (stream instanceof BaseDecoder) {
 					stream.start();
 				}
-				// else {
-				// 	// TODO: @legomushroom - remove?
-				// 	stream.resume();
-				// }
 			}),
 		);
 	}
@@ -155,15 +276,22 @@ export abstract class BasePromptParser extends Disposable {
 	/**
 	 * Start the prompt parser.
 	 */
-	public abstract start(): this;
+	public start(): this {
+		// if already in error state, nothing to do
+		if (this.errorCondition) {
+			return this;
+		}
+
+		this.promptContentsProvider.start();
+
+		return this;
+	}
 
 	/**
 	 * Associated URI of the prompt.
 	 */
 	public get uri(): URI {
-		return this.promptUri instanceof URI
-			? this.promptUri
-			: this.promptUri.uri;
+		return this.promptContentsProvider.uri;
 	}
 
 	/**
@@ -258,9 +386,40 @@ export abstract class BasePromptParser extends Disposable {
 	}
 
 	/**
+	 * TODO: @legomushroom
+	 */
+	public get tokensTree(): readonly TPromptPart[] {
+		const result: TPromptPart[] = [];
+
+		for (const token of this.tokens) {
+			result.push(token);
+
+			if (token.type === 'file-reference') {
+				result.push(...token.tokensTree);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * TODO: @legomushroom
+	 */
+	public get allValidFileReferenceUris(): readonly URI[] {
+		const result: TPromptPart[] = [];
+
+		for (const fileReference of this.validFileReferences) {
+			result.push(fileReference);
+			result.push(...fileReference.validFileReferences);
+		}
+
+		return result.map(child => child.uri);
+	}
+
+	/**
 	 * Get list of all valid file references.
 	 */
-	public get validFileReferences(): readonly PromptFileReference[] {
+	public get validFileReferences(): readonly IPromptFileReference[] {
 		return this.tokens
 			// TODO: @legomushroom
 			// // skip the root reference itself (this variable)
@@ -272,7 +431,7 @@ export abstract class BasePromptParser extends Disposable {
 				}
 
 				// TODO: @legomushroom
-				return reference instanceof PromptFileReference;
+				return reference.type === 'file-reference';
 			});
 	}
 
@@ -282,18 +441,6 @@ export abstract class BasePromptParser extends Disposable {
 	public get validFileReferenceUris(): readonly URI[] {
 		return this.validFileReferences
 			.map(child => child.uri);
-	}
-
-	/**
-	 * Check if the current reference is equal to a given one.
-	 * TODO: @legomushroom - remove?
-	 */
-	public equals<T extends BasePromptParser>(other: T): boolean {
-		if (!this.sameUri(other.uri)) {
-			return false;
-		}
-
-		return true;
 	}
 
 	/**
@@ -337,6 +484,40 @@ export abstract class BasePromptParser extends Disposable {
 		this._onUpdate.fire();
 
 		super.dispose();
+	}
+}
+
+/**
+ * TODO: @legomushroom
+ */
+export class PromptFileReference extends BasePromptParser<FilePromptContentProvider> implements IPromptFileReference {
+	/**
+	 * The range of the file reference token.
+	 */
+	public readonly range = this.token.range;
+
+	constructor(
+		public readonly token: FileReference,
+		dirname: URI,
+		seenReferences: string[] = [],
+		@IInstantiationService initService: IInstantiationService,
+		@IConfigurationService configService: IConfigurationService,
+	) {
+		const fileUri = extUri.resolvePath(dirname, token.path);
+		const provider = initService.createInstance(FilePromptContentProvider, fileUri);
+
+		super(provider, seenReferences, initService, configService);
+	}
+
+	public readonly type = 'file-reference';
+	public readonly path: string = this.token.path;
+	public readonly text: string = this.token.text;
+
+	/**
+	 * Returns a string representation of this object.
+	 */
+	public override toString() {
+		return `${FileReference.TOKEN_START}${this.uri.path}`;
 	}
 }
 

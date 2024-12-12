@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { assertDefined } from '../../../../base/common/types.js';
-import { Disposable } from '../../../../base/common/lifecycle.js';
+import { IDisposable } from '../../../../base/common/lifecycle.js';
 import { CancellationError } from '../../../../base/common/errors.js';
 
 /**
@@ -15,7 +15,7 @@ import { CancellationError } from '../../../../base/common/errors.js';
  * Type for an `async` function that resolves a `disposable` object.
  */
 type TAsyncFunction<
-	TReturn extends Disposable,
+	TReturn extends IDisposable,
 	TArgs extends unknown[],
 > = (...args: TArgs) => Promise<TReturn>;
 
@@ -24,19 +24,19 @@ type TAsyncFunction<
  * resolves a disposable object.
  */
 type TAsyncFunctionDescriptor<
-	TReturn extends Disposable,
+	TReturn extends IDisposable,
 	TArgs extends unknown[],
 > = TypedPropertyDescriptor<TAsyncFunction<TReturn, TArgs>>;
 
 /**
  * Type for a `disposable` with a public `disposed` attribute available.
  */
-type TTrackedDisposable = Disposable & { disposed: boolean };
+type TTrackedDisposable = IDisposable & { disposed: boolean };
 
 /**
  * TODO: @legomushroom
  */
-class StrictPromise<TReturn extends Disposable, TParent extends TTrackedDisposable> extends Promise<TReturn> {
+class StrictPromise<TReturn extends IDisposable, TParent extends TTrackedDisposable> extends Promise<TReturn> {
 	constructor(
 		executor: (resolve: (value: TReturn | PromiseLike<TReturn>) => void, reject: (reason?: any) => void) => void,
 		private readonly parent: TParent,
@@ -73,7 +73,7 @@ class StrictPromise<TReturn extends Disposable, TParent extends TTrackedDisposab
  */
 export function cancelOnDispose<
 	TObject extends TTrackedDisposable,
-	TReturn extends Disposable,
+	TReturn extends IDisposable,
 	TArgs extends unknown[],
 >(
 	_proto: TObject,

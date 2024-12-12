@@ -7,15 +7,15 @@ import { URI } from '../../../../../../base/common/uri.js';
 import { assert } from '../../../../../../base/common/assert.js';
 import { IDynamicVariable } from '../../../common/chatVariables.js';
 import { IRange } from '../../../../../../editor/common/core/range.js';
+import { FilePromptParser } from '../../../common/filePromptParser.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
-import { FilePromptParser, PromptFileReference } from '../../../common/promptFileReference.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
 
 /**
  * A wrapper class for an `IDynamicVariable` object that that adds functionality
  * to parse nested file references of this variable.
- * See {@link PromptFileReference} for details.
+ * See {@link FilePromptParser} for details.
  */
 export class ChatFileReference extends FilePromptParser implements IDynamicVariable {
 	/**
@@ -34,7 +34,7 @@ export class ChatFileReference extends FilePromptParser implements IDynamicVaria
 			`Variable data must be an URI, got '${data}'.`,
 		);
 
-		super(data, [], fileService, initService, configService);
+		super(data, [], initService, configService);
 	}
 
 	/**
