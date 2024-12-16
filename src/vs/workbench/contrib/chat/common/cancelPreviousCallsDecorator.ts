@@ -48,7 +48,7 @@ export function cancelPreviousCalls<
 	descriptor.value = function (
 		this: TObject,
 		...args: Parameters<typeof originalMethod>
-	): ReturnType<typeof originalMethod> {
+	): TReturn {
 		let record = objectRecords.get(this);
 		if (!record) {
 			const disposables = this._register(new DisposableStore());
