@@ -27,6 +27,6 @@ export class TextModelPromptParser extends BasePromptParser<TextModelContentsPro
 	 * Returns a string representation of this object.
 	 */
 	public override toString() {
-		return `text-editor-prompt:${this.uri.path}`;
+		return `text-model-prompt:${this.uri.path}`;
 	}
 }

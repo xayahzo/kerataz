@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from '../../../../base/common/uri.js';
-import { IPromptProvider } from './basePromptTypes.js';
+import { IPromptContentsProvider } from './basePromptTypes.js';
 import { BasePromptParser } from './basePromptParser.js';
-// import { cancelOnDispose } from './cancelOnDisposeDecorator.js';
+import { cancelOnDispose } from './cancelOnDisposeDecorator.js';
 import { basename } from '../../../../base/common/resources.js';
 import { CancellationError } from '../../../../base/common/errors.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
@@ -21,7 +21,7 @@ import { FileChangesEvent, FileChangeType, IFileService } from '../../../../plat
  * TODO: @legomushroom
  * TODO: @legomushroom - move to the correct place
  */
-export class FilePromptContentProvider extends PromptContentsProviderBase<FileChangesEvent> implements IPromptProvider {
+export class FilePromptContentProvider extends PromptContentsProviderBase<FileChangesEvent> implements IPromptContentsProvider {
 	/**
 	 * TODO: @legomushroom
 	 */
@@ -68,7 +68,7 @@ export class FilePromptContentProvider extends PromptContentsProviderBase<FileCh
 	/**
 	 * TODO: @legomushroom
 	 */
-	// @cancelOnDispose
+	@cancelOnDispose
 	protected async getContentsStream(
 		event: FileChangesEvent | 'full',
 		cancellationToken?: CancellationToken,
@@ -82,15 +82,15 @@ export class FilePromptContentProvider extends PromptContentsProviderBase<FileCh
 			throw new FileOpenFailed(this.uri, 'Failed to open non-existing file.');
 		}
 
-		// if URI doesn't point to a prompt snippet file, don't try to resolve it
-		if (!BasePromptParser.isPromptSnippet(this.uri)) {
-			throw new NotPromptSnippetFile(this.uri);
-		}
-
 		const fileStream = await this.fileService.readFileStream(this.uri);
 
 		if (!fileStream) {
 			throw new FileOpenFailed(this.uri, 'Failed to open file stream.');
+		}
+
+		// if URI doesn't point to a prompt snippet file, don't try to resolve it
+		if (!BasePromptParser.isPromptSnippet(this.uri)) {
+			throw new NotPromptSnippetFile(this.uri);
 		}
 
 		if (cancellationToken?.isCancellationRequested) {

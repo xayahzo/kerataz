@@ -19,14 +19,15 @@ type TOnContentChangedCallback = (streamOrError: ReadableStream<Line> | ParseErr
 /**
  * TODO: @legomushroom - move to the correct place
  */
-export interface IPromptProvider extends IDisposable {
+export interface IPromptContentsProvider extends IDisposable {
 	start(): void;
 	onContentChanged(callback: TOnContentChangedCallback): IDisposable;
 	readonly uri: URI;
 }
 
+type TPromptPartTypes = 'file-reference';
 export interface IPromptPart {
-	readonly type: 'file-reference';
+	readonly type: TPromptPartTypes;
 	readonly range: Range;
 	readonly text: string;
 }
@@ -35,11 +36,11 @@ export interface IPromptFileReference extends IPromptPart {
 	readonly type: 'file-reference';
 	readonly uri: URI;
 	readonly path: string;
+	readonly resolveFailed: boolean | undefined;
+	readonly errorCondition: ParseError | undefined;
 	tokensTree: readonly TPromptPart[];
 	allValidFileReferenceUris: readonly URI[];
 	validFileReferences: readonly IPromptFileReference[];
-	readonly resolveFailed: boolean | undefined;
-	readonly errorCondition: ParseError | undefined;
 }
 
 /**

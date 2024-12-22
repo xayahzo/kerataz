@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IPromptProvider } from './basePromptTypes.js';
+import { IPromptContentsProvider } from './basePromptTypes.js';
 import { ITextModel } from '../../../../editor/common/model.js';
 import { PromptContentsProviderBase } from './promptContentsProviderBase.js';
 import { Line } from '../../../../editor/common/codecs/linesCodec/tokens/line.js';
@@ -14,7 +14,7 @@ import { IModelContentChangedEvent } from '../../../../editor/common/textModelEv
  * TODO: @legomushroom
  * TODO: @legomushroom - move to a correct place
  */
-export class TextModelContentsProvider extends PromptContentsProviderBase<IModelContentChangedEvent> implements IPromptProvider {
+export class TextModelContentsProvider extends PromptContentsProviderBase<IModelContentChangedEvent> implements IPromptContentsProvider {
 	public readonly uri = this.model.uri;
 
 	constructor(

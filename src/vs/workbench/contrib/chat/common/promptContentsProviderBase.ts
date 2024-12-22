@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from '../../../../base/common/uri.js';
-import { IPromptProvider } from './basePromptTypes.js';
 import { Emitter } from '../../../../base/common/event.js';
+import { IPromptContentsProvider } from './basePromptTypes.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { ReadableStream } from '../../../../base/common/stream.js';
 import { CancellationError } from '../../../../base/common/errors.js';
@@ -38,7 +38,7 @@ import { Line } from '../../../../editor/common/codecs/linesCodec/tokens/line.js
  */
 export abstract class PromptContentsProviderBase<
 	TChangeEvent extends NonNullable<unknown>,
-> extends Disposable implements IPromptProvider {
+> extends Disposable implements IPromptContentsProvider {
 	/**
 	 * Internal event emitter for the prompt contents change event. Classes that extend
 	 * this abstract class are responsible to use this emitter to fire the contents change

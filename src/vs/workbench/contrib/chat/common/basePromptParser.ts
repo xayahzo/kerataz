@@ -5,7 +5,7 @@
 
 // TODO: @legomushroom - cleanup
 import { URI } from '../../../../base/common/uri.js';
-import { IPromptFileReference, IPromptProvider, TPromptPart } from './basePromptTypes.js';
+import { IPromptFileReference, IPromptContentsProvider, TPromptPart } from './basePromptTypes.js';
 import { assert, assertNever } from '../../../../base/common/assert.js';
 import { Emitter } from '../../../../base/common/event.js';
 import { BaseDecoder } from '../../../../base/common/codecs/baseDecoder.js';
@@ -79,7 +79,7 @@ export class PromptLine extends Disposable {
 
 			if (token instanceof FileReference) {
 				const fileReference = this.instantiationService
-					.createInstance(PromptFileReference, token, dirname, seenReferences);
+					.createInstance(PromptFileReference, token, dirname, [...seenReferences]);
 
 				this._tokens.push(fileReference);
 
@@ -164,7 +164,7 @@ const PROMPT_SNIPPETS_CONFIG_KEY: string = 'chat.experimental.prompt-snippets';
 /**
  * TODO: @legomushroom
  */
-export class BasePromptParser<T extends IPromptProvider> extends Disposable {
+export class BasePromptParser<T extends IPromptContentsProvider> extends Disposable {
 	public disposed: boolean = false;
 
 	/**
