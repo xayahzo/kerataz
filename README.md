@@ -11,7 +11,6 @@ This repository ("`Kerataz - OSS`") is where we develop the Kerataz product toge
 ## Kerataz
 
 <p align="center">
-  <img alt="Kerataz in action" src="https://user-images.githubusercontent.com/35271042/118224532-3842c400-b438-11eb-923d-a5f66fa6785a.png">
 </p>
 
 Kerataz is a distribution of the `Kerataz - OSS` repository with specific customizations released under a traditional product license.
